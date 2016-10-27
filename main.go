@@ -75,15 +75,9 @@ func main() {
 	floatRe := regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$`)
 	trueRe := regexp.MustCompile(`^(true|T|True|TRUE)$`)
 	falseRe := regexp.MustCompile(`^(false|F|False|FALSE)$`)
-	var timestampRe
-	if conf.TimestampFormat == "unix" {
-		timestampRe = nil
-		err := nil
-	} else {
-		timestampRe, err := regexp.Compile("^" + numbersRe.ReplaceAllString(conf.TimestampFormat, `\d`) + "$")
-		if err != nil {
-			log.Fatalf("time stamp regexp creation failed")
-		}
+	timestampRe, err := regexp.Compile("^" + numbersRe.ReplaceAllString(conf.TimestampFormat, `\d`) + "$")
+	if err != nil {
+		log.Fatalf("time stamp regexp creation failed")
 	}
 
 	//influxdb client
@@ -232,25 +226,25 @@ func main() {
 			if conf.TimestampColumn == h {
 				//the timestamp column!
 
-				if conf.TimestampFormat ==  {
+				if conf.TimestampFormat == "unix" {
 					t, err := time.Parse(conf.TimestampFormat, r)
 					if err != nil {
 						fmt.Printf("#%d: %s: Invalid time: %s\n", i, h, err)
 						continue
 					}
+					ts = t
 				} else if timestampRe.MatchString(r) {
 					ti, err := strconv.ParseInt(r, 10, 64)
 					if err != nil {
 						fmt.Printf("#%d: %s: Invalid time: %s\n", i, h, err)
 						continue
 					}
-					tm := time.Unix(ti, 0)
+					ts = time.Unix(ti, 0)
 				} else {
 					fmt.Printf("#%d: %s: Invalid time: not mathing format\n", i, h)
 					continue
 				}
 
-				ts = t
 				continue
 
 			} else if timestampRe != nil && timestampRe.MatchString(r) {
