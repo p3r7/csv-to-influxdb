@@ -189,6 +189,53 @@ func main() {
 		bpSize = 0
 	}
 
+	parseUnixTimestamp := func(unixTmstmp string) (ts time.Time, outErr) {
+		var duration_Milliseconds time.Duration = time.Duration(0)
+		if len(unixTmstmp) >= 13 {
+			ms_string := unixTmstmp[10:13]
+			ms, err := strconv.ParseInt(ms_string, 10, 64)
+			if err != nil {
+				return
+			}
+			duration_Milliseconds = time.Duration(ms) * time.Millisecond
+		}
+
+		var duration_Microsecond time.Duration = time.Duration(0)
+		if len(unixTmstmp) >= 16 {
+			us_string := unixTmstmp[13:16]
+			us, err := strconv.ParseInt(us_string, 10, 64)
+			if err != nil {
+				return
+			}
+
+			duration_Microsecond = time.Duration(us) * time.Microsecond
+		}
+
+		var duration_Nanosecond time.Duration = time.Duration(0)
+		if len(unixTmstmp) >= 19 {
+			ns_string := unixTmstmp[16:19]
+			ns, err := strconv.ParseInt(ns_string, 10, 64)
+			if err != nil {
+				return
+			}
+			duration_Nanosecond = time.Duration(ns) * time.Nanosecond
+		}
+
+		unixTmstmp = unixTmstmp[0:10]
+		ti, err := strconv.ParseInt(unixTmstmp, 10, 64)
+		if err != nil {
+			return
+		}
+
+		ts = time.Unix(ti, 0)
+
+		ts = ts.Add(duration_Milliseconds)
+		ts = ts.Add(duration_Microsecond)
+		ts = ts.Add(duration_Nanosecond)
+
+		return
+	}
+
 	//read csv, line by line
 	r := csv.NewReader(f)
 	for i := 0; ; i++ {
@@ -224,29 +271,23 @@ func main() {
 
 			//fields require string parsing
 			if conf.TimestampColumn == h {
-				//the timestamp column!
 
 				if conf.TimestampFormat == "unix" {
+					ts, err = parseUnixTimestamp(r)
+					if err != nil {
+						fmt.Printf("#%d: %s: Invalid time: %s\n", i, h, err)
+						continue
+					}
+					continue
+				} else {
 					t, err := time.Parse(conf.TimestampFormat, r)
 					if err != nil {
 						fmt.Printf("#%d: %s: Invalid time: %s\n", i, h, err)
 						continue
 					}
-					ts = t
-				} else if timestampRe.MatchString(r) {
-					ti, err := strconv.ParseInt(r, 10, 64)
-					if err != nil {
-						fmt.Printf("#%d: %s: Invalid time: %s\n", i, h, err)
-						continue
-					}
-					ts = time.Unix(ti, 0)
-				} else {
-					fmt.Printf("#%d: %s: Invalid time: not mathing format\n", i, h)
+					ts = t //the timestamp column!
 					continue
 				}
-
-				continue
-
 			} else if timestampRe != nil && timestampRe.MatchString(r) {
 				t, err := time.Parse(conf.TimestampFormat, r)
 				if err != nil {
