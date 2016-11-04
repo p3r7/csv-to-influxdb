@@ -189,7 +189,7 @@ func main() {
 		bpSize = 0
 	}
 
-	parseUnixTimestamp := func(unixTmstmp string) (ts time.Time, outErr) {
+	parseUnixTimestamp := func(unixTmstmp string) (ts time.Time, outErr error) {
 		var duration_Milliseconds time.Duration = time.Duration(0)
 		if len(unixTmstmp) >= 13 {
 			ms_string := unixTmstmp[10:13]
@@ -272,8 +272,11 @@ func main() {
 			//fields require string parsing
 			if conf.TimestampColumn == h {
 
+				fmt.Printf("JB: at timestamp column\n")
+
 				if conf.TimestampFormat == "unix" {
 					ts, err = parseUnixTimestamp(r)
+
 					if err != nil {
 						fmt.Printf("#%d: %s: Invalid time: %s\n", i, h, err)
 						continue
