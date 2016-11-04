@@ -271,9 +271,6 @@ func main() {
 
 			//fields require string parsing
 			if conf.TimestampColumn == h {
-
-				fmt.Printf("JB: at timestamp column\n")
-
 				if conf.TimestampFormat == "unix" {
 					ts, err = parseUnixTimestamp(r)
 
