@@ -29,6 +29,7 @@ type config struct {
 	TagColumns      string `help:"Comma-separated list of columns to use as tags instead of fields"`
 	TimestampColumn string `short:"ts" help:"Header name of the column to use as the timestamp"`
 	TimestampFormat string `short:"tf" help:"Timestamp format used to parse all timestamp records"`
+	NoQueryEndpoint bool   `help:"Skip InfluxDB database detection / creation logic. Necessary for a InfluxDB-relay backend`
 	NoAutoCreate    bool   `help:"Disable automatic creation of database"`
 	ForceFloat      bool   `help:"Force all numeric values to insert as float"`
 	ForceString     bool   `help:"Force all numeric values to insert as string"`
@@ -91,30 +92,33 @@ func main() {
 	c, err := client.NewHTTPClient(client.HTTPConfig{Addr: conf.Server, Username: conf.Username, Password: conf.Password, Timeout: time.Duration(conf.HttpTimeout) * time.Second})
 	defer c.Close()
 
-	dbsResp, err := c.Query(client.Query{Command: "SHOW DATABASES"})
-	if err != nil {
-		log.Fatalf("Invalid server address: %s", err)
-	}
+	if !conf.NoQueryEndpoint {
 
-	dbExists := false
-	if len(dbsResp.Results) == 0 {
-		log.Fatalf("No databases found, probably an authentication issue, please provide username and password.")
-	}
-	for _, v := range dbsResp.Results[0].Series[0].Values {
-		dbName := v[0].(string)
-		if conf.Database == dbName {
-			dbExists = true
-			break
-		}
-	}
-
-	if !dbExists {
-		if conf.NoAutoCreate {
-			log.Fatalf("Database '%s' does not exist", conf.Database)
-		}
-		_, err := c.Query(client.Query{Command: "CREATE DATABASE \"" + conf.Database + "\""})
+		dbsResp, err := c.Query(client.Query{Command: "SHOW DATABASES"})
 		if err != nil {
-			log.Fatalf("Failed to create database: %s", err)
+			log.Fatalf("Invalid server address: %s", err)
+		}
+
+		dbExists := false
+		if len(dbsResp.Results) == 0 {
+			log.Fatalf("No databases found, probably an authentication issue, please provide username and password.")
+		}
+		for _, v := range dbsResp.Results[0].Series[0].Values {
+			dbName := v[0].(string)
+			if conf.Database == dbName {
+				dbExists = true
+				break
+			}
+		}
+
+		if !dbExists {
+			if conf.NoAutoCreate {
+				log.Fatalf("Database '%s' does not exist", conf.Database)
+			}
+			_, err := c.Query(client.Query{Command: "CREATE DATABASE \"" + conf.Database + "\""})
+			if err != nil {
+				log.Fatalf("Failed to create database: %s", err)
+			}
 		}
 	}
 
